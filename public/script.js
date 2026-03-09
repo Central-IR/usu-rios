@@ -25,9 +25,6 @@ function toUpperCase(value) {
     return value ? String(value).toUpperCase() : '';
 }
 
-// NÃO usaremos mais uppercase automático nos inputs
-// function setupUpperCaseInputs() { ... }  <-- removido
-
 // Autenticação
 document.addEventListener('DOMContentLoaded', () => {
     verificarAutenticacao();
@@ -159,6 +156,24 @@ async function loadUsuarios() {
         }
     } catch (error) {
         console.error('❌ Erro ao carregar:', error);
+    }
+}
+
+// Função de sincronização (chamada pelo botão)
+async function syncData() {
+    console.log('🔄 Iniciando sincronização...');
+    
+    if (!isOnline) {
+        showToast('Erro ao sincronizar', 'error');
+        return;
+    }
+
+    try {
+        await loadUsuarios();
+        showToast('Dados sincronizados', 'success');
+    } catch (error) {
+        console.error('❌ Erro na sincronização:', error);
+        showToast('Erro ao sincronizar', 'error');
     }
 }
 
@@ -295,7 +310,6 @@ function openFormModal() {
     resetForm();
     currentTab = 0;
     switchTab(tabs[0]);
-    // Não chamamos setupUpperCaseInputs()
 }
 
 function closeFormModal() {
@@ -334,8 +348,8 @@ async function salvarUsuario() {
     }
 
     const usuario = {
-        name: nome,                      // <-- sem .toUpperCase()
-        username: username.toLowerCase(), // mantém minúsculas
+        name: nome,
+        username: username.toLowerCase(),
         sector: sector,
         is_admin,
         is_active,
@@ -393,7 +407,7 @@ async function editUsuario(id) {
     document.getElementById('formTitle').textContent = `Editar ${usuario.name}`;
     document.getElementById('nome').value = usuario.name;
     document.getElementById('username').value = usuario.username;
-    document.getElementById('password').value = ''; // não preenche a senha
+    document.getElementById('password').value = '';
     document.getElementById('sector').value = usuario.sector || '';
     document.getElementById('isAdmin').checked = usuario.is_admin || false;
     document.getElementById('isActive').checked = usuario.is_active !== false;
@@ -402,7 +416,6 @@ async function editUsuario(id) {
     document.getElementById('formModal').classList.add('show');
     currentTab = 0;
     switchTab(tabs[0]);
-    // Não chamamos setupUpperCaseInputs()
 }
 
 // Visualizar usuário
