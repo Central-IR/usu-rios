@@ -200,29 +200,53 @@ app.post('/api/usuarios', async (req, res) => {
     try {
         const { username, password, name, sector, is_admin, is_active, authorized_ips } = req.body;
 
+        console.log('📥 POST /api/usuarios - Dados recebidos:', {
+            username,
+            name,
+            sector,
+            is_admin,
+            is_active,
+            authorized_ips
+        });
+
+        // Validações básicas
         if (!username || !password || !name) {
+            console.log('❌ Campos obrigatórios faltando');
             return res.status(400).json({ error: 'Nome, usuário e senha são obrigatórios' });
         }
 
         // Verificar se username já existe
-        const { data: existing } = await supabase
+        const { data: existing, error: checkError } = await supabase
             .from('users')
             .select('id')
             .ilike('username', username.trim())
             .maybeSingle();
+
+        if (checkError) {
+            console.error('❌ Erro ao verificar usuário existente:', checkError);
+            return res.status(500).json({ 
+                error: 'Erro ao verificar disponibilidade do usuário',
+                details: checkError.message 
+            });
+        }
+
         if (existing) {
+            console.log('❌ Username já existe:', username);
             return res.status(400).json({ error: 'Nome de usuário já existe' });
         }
 
+        // Preparar dados para inserção
         const userData = {
             username: username.trim().toLowerCase(),
-            password: password, // Mantendo texto plano (igual ao Portal)
+            password: password, // manter como está (texto plano)
             name: name.trim().toUpperCase(),
             sector: sector || null,
             is_admin: is_admin || false,
             is_active: is_active !== undefined ? is_active : true,
-            authorized_ips: authorized_ips || []
+            authorized_ips: Array.isArray(authorized_ips) ? authorized_ips : []
         };
+
+        console.log('📦 Inserindo dados no Supabase:', JSON.stringify(userData, null, 2));
 
         const { data, error } = await supabase
             .from('users')
@@ -230,11 +254,23 @@ app.post('/api/usuarios', async (req, res) => {
             .select('id, username, name, sector, is_admin, is_active, authorized_ips')
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Erro do Supabase ao inserir:', error);
+            return res.status(500).json({ 
+                error: 'Erro ao criar usuário no banco de dados',
+                details: error.message,
+                code: error.code
+            });
+        }
+
+        console.log('✅ Usuário criado com sucesso:', data.id);
         res.status(201).json(data);
     } catch (error) {
-        console.error('❌ Erro em POST /usuarios:', error);
-        res.status(500).json({ error: 'Erro ao criar usuário', message: error.message });
+        console.error('❌ Erro inesperado em POST /usuarios:', error);
+        res.status(500).json({ 
+            error: 'Erro interno ao criar usuário',
+            message: error.message 
+        });
     }
 });
 
