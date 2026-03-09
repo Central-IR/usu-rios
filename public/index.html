@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuários</title>
+    <link rel="icon" type="image/png" href="I.R.-COMERCIO-E-MATERIAIS-ELETRICOS-PRETO.png">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-content">
+        <div class="container">
+            <div class="header">
+                <div class="header-left">
+                    <h1>Usuários</h1>
+                    <div id="connectionStatus" class="connection-status offline">
+                        <span class="status-dot"></span>
+                    </div>
+                </div>
+                <button onclick="openFormModal()" class="btn-new-order-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Novo Usuário
+                </button>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="search-bar-wrapper">
+                <div class="search-bar">
+                    <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" id="search" placeholder="Buscar por nome, usuário, setor..." oninput="filterUsuarios()">
+                </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="card table-card">
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Usuário</th>
+                                <th>Setor</th>
+                                <th>Admin</th>
+                                <th>Ativo</th>
+                                <th>IPs Autorizados</th>
+                                <th style="text-align: center;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usuariosContainer"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Formulário -->
+    <div class="modal-overlay" id="formModal">
+        <div class="modal-content large" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="formTitle">Novo Usuário</h3>
+                <button class="close-modal" onclick="closeFormModal()">✕</button>
+            </div>
+
+            <div class="tabs-container">
+                <div class="tabs-nav">
+                    <button class="tab-btn active" onclick="switchTab('tab-dados')">Dados</button>
+                    <button class="tab-btn" onclick="switchTab('tab-ips')">IPs Autorizados</button>
+                </div>
+
+                <!-- Aba Dados -->
+                <div class="tab-content active" id="tab-dados">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Nome *</label>
+                            <input type="text" id="nome" placeholder="Nome completo" maxlength="100">
+                        </div>
+                        <div class="form-group">
+                            <label>Usuário *</label>
+                            <input type="text" id="username" placeholder="Nome de usuário (ex: joao.silva)" maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label>Senha * <span style="font-weight:normal; color:var(--text-secondary);">(deixe em branco para não alterar)</span></label>
+                            <input type="password" id="password" placeholder="Senha">
+                        </div>
+                        <div class="form-group">
+                            <label>Setor</label>
+                            <select id="sector">
+                                <option value="">Selecione...</option>
+                                <option value="Administrador">Administrador</option>
+                                <option value="Vendas">Vendas</option>
+                                <option value="Financeiro">Financeiro</option>
+                                <option value="Almoxarifado">Almoxarifado</option>
+                                <option value="Comercial">Comercial</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="display: flex; gap: 2rem; align-items: center;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="isAdmin"> Administrador
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="isActive" checked> Ativo
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aba IPs Autorizados -->
+                <div class="tab-content" id="tab-ips">
+                    <div style="margin-bottom: 1rem;">
+                        <p style="color: var(--text-secondary); font-size: 0.9rem;">Lista de IPs permitidos para este usuário. Um por linha ou separados por vírgula.</p>
+                    </div>
+                    <div class="form-group">
+                        <textarea id="authorizedIps" rows="5" placeholder="Ex: 187.36.172.217&#10;187.59.239.143&#10;192.168.1.100"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" id="btnPrevious" class="secondary" onclick="previousTab()" style="display: none;">Anterior</button>
+                <button type="button" id="btnNext" class="secondary" onclick="nextTab()">Próximo</button>
+                <button type="button" id="btnSave" class="success" onclick="salvarUsuario()" style="display: none;">Salvar</button>
+                <button type="button" class="danger" onclick="closeFormModal()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Visualização -->
+    <div class="modal-overlay" id="viewModal">
+        <div class="modal-content large" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Detalhes do Usuário</h3>
+                <button class="close-modal" onclick="closeViewModal()">✕</button>
+            </div>
+            <div class="tabs-container">
+                <div class="tabs-nav">
+                    <button class="tab-btn active" onclick="switchViewTab('view-tab-dados')">Dados</button>
+                    <button class="tab-btn" onclick="switchViewTab('view-tab-ips')">IPs Autorizados</button>
+                </div>
+                <div class="tab-content active" id="view-tab-dados">
+                    <div class="view-section">
+                        <p><strong>Nome:</strong> <span id="viewNome"></span></p>
+                        <p><strong>Usuário:</strong> <span id="viewUsername"></span></p>
+                        <p><strong>Setor:</strong> <span id="viewSector"></span></p>
+                        <p><strong>Administrador:</strong> <span id="viewAdmin"></span></p>
+                        <p><strong>Ativo:</strong> <span id="viewActive"></span></p>
+                    </div>
+                </div>
+                <div class="tab-content" id="view-tab-ips">
+                    <div class="view-section">
+                        <p><strong>IPs Autorizados:</strong></p>
+                        <div id="viewIpsList" style="background: var(--input-bg); padding: 1rem; border-radius: 8px; font-family: monospace;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="btnViewPrev" class="secondary" onclick="previousViewTab()" style="display: none;">Anterior</button>
+                <button type="button" id="btnViewNext" class="secondary" onclick="nextViewTab()">Próximo</button>
+                <button type="button" class="danger" onclick="closeViewModal()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação de Exclusão -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-content modal-delete">
+            <button class="close-modal" onclick="closeDeleteModal()">✕</button>
+            <div class="modal-message-delete">
+                Tem certeza que deseja excluir este usuário?
+            </div>
+            <div class="modal-actions modal-actions-no-border">
+                <button class="danger" onclick="confirmarExclusao()">Excluir</button>
+                <button class="secondary" onclick="closeDeleteModal()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
