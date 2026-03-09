@@ -25,20 +25,8 @@ function toUpperCase(value) {
     return value ? String(value).toUpperCase() : '';
 }
 
-function setupUpperCaseInputs() {
-    const textInputs = document.querySelectorAll('input[type="text"]:not([readonly]), textarea');
-    textInputs.forEach(input => {
-        input.removeEventListener('input', upperCaseHandler);
-        input.addEventListener('input', upperCaseHandler);
-    });
-}
-
-function upperCaseHandler(e) {
-    const start = this.selectionStart;
-    const end = this.selectionEnd;
-    this.value = toUpperCase(this.value);
-    this.setSelectionRange(start, end);
-}
+// NÃO usaremos mais uppercase automático nos inputs
+// function setupUpperCaseInputs() { ... }  <-- removido
 
 // Autenticação
 document.addEventListener('DOMContentLoaded', () => {
@@ -307,7 +295,7 @@ function openFormModal() {
     resetForm();
     currentTab = 0;
     switchTab(tabs[0]);
-    setupUpperCaseInputs();
+    // Não chamamos setupUpperCaseInputs()
 }
 
 function closeFormModal() {
@@ -346,8 +334,8 @@ async function salvarUsuario() {
     }
 
     const usuario = {
-        name: nome,
-        username: username,
+        name: nome,                      // <-- sem .toUpperCase()
+        username: username.toLowerCase(), // mantém minúsculas
         sector: sector,
         is_admin,
         is_active,
@@ -414,7 +402,7 @@ async function editUsuario(id) {
     document.getElementById('formModal').classList.add('show');
     currentTab = 0;
     switchTab(tabs[0]);
-    setupUpperCaseInputs();
+    // Não chamamos setupUpperCaseInputs()
 }
 
 // Visualizar usuário
