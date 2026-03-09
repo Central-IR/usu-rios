@@ -6,11 +6,11 @@ const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
-const PORT = process.env.PORT || 3004; // Porta diferente da transportadora
+const PORT = process.env.PORT || 3004;
 
-// Configuração do Supabase
+// Configuração do Supabase (use a SERVICE_ROLE_KEY para evitar RLS)
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // <-- use a service_role
 
 if (!supabaseUrl || !supabaseKey) {
     console.error('❌ ERRO: Variáveis de ambiente do Supabase não configuradas');
@@ -30,7 +30,7 @@ app.options('*', cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Registro de acessos (opcional, igual à transportadora)
+// Registro de acessos (opcional)
 const logFilePath = path.join(__dirname, 'acessos.log');
 let accessCount = 0;
 let uniqueIPs = new Set();
@@ -58,7 +58,7 @@ setInterval(() => {
     }
 }, 3600000);
 
-// Configuração do Portal (para verificar autenticação)
+// Configuração do Portal
 const PORTAL_URL = process.env.PORTAL_URL || 'https://ir-comercio-portal-zcan.onrender.com';
 
 // Middleware de autenticação via token do Portal
@@ -116,7 +116,7 @@ app.use(express.static(publicPath, {
     }
 }));
 
-// Health check (sem autenticação)
+// Health check
 app.get('/health', async (req, res) => {
     try {
         const { count, error } = await supabase
@@ -134,7 +134,7 @@ app.get('/health', async (req, res) => {
     }
 });
 
-// HEAD request para verificar conexão
+// HEAD request
 app.head('/api/usuarios', (req, res) => res.status(200).end());
 
 // Aplicar autenticação nas rotas da API
@@ -144,7 +144,7 @@ app.use('/api', verificarAutenticacao);
 // ROTAS DA API - USUÁRIOS
 // ============================================
 
-// Listar usuários (com paginação e busca)
+// Listar usuários
 app.get('/api/usuarios', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -200,18 +200,9 @@ app.post('/api/usuarios', async (req, res) => {
     try {
         const { username, password, name, sector, is_admin, is_active, authorized_ips } = req.body;
 
-        console.log('📥 POST /api/usuarios - Dados recebidos:', {
-            username,
-            name,
-            sector,
-            is_admin,
-            is_active,
-            authorized_ips
-        });
+        console.log('📥 Dados recebidos:', { username, name, sector, is_admin, is_active, authorized_ips });
 
-        // Validações básicas
         if (!username || !password || !name) {
-            console.log('❌ Campos obrigatórios faltando');
             return res.status(400).json({ error: 'Nome, usuário e senha são obrigatórios' });
         }
 
@@ -224,29 +215,24 @@ app.post('/api/usuarios', async (req, res) => {
 
         if (checkError) {
             console.error('❌ Erro ao verificar usuário existente:', checkError);
-            return res.status(500).json({ 
-                error: 'Erro ao verificar disponibilidade do usuário',
-                details: checkError.message 
-            });
+            return res.status(500).json({ error: 'Erro ao verificar disponibilidade do usuário' });
         }
 
         if (existing) {
-            console.log('❌ Username já existe:', username);
             return res.status(400).json({ error: 'Nome de usuário já existe' });
         }
 
-        // Preparar dados para inserção
         const userData = {
-            username: username.trim().toLowerCase(),
-            password: password, // manter como está (texto plano)
-            name: name.trim().toUpperCase(),
+            username: username.trim().toLowerCase(),   // mantém minúsculas
+            password: password,                         // texto plano (como no portal)
+            name: name.trim(),                          // <-- sem .toUpperCase()
             sector: sector || null,
             is_admin: is_admin || false,
             is_active: is_active !== undefined ? is_active : true,
-            authorized_ips: Array.isArray(authorized_ips) ? authorized_ips : []
+            authorized_ips: authorized_ips || []
         };
 
-        console.log('📦 Inserindo dados no Supabase:', JSON.stringify(userData, null, 2));
+        console.log('📦 Inserindo dados no Supabase:', userData);
 
         const { data, error } = await supabase
             .from('users')
@@ -284,26 +270,31 @@ app.put('/api/usuarios/:id', async (req, res) => {
         }
 
         // Verificar se username já existe (exceto o próprio)
-        const { data: existing } = await supabase
+        const { data: existing, error: checkError } = await supabase
             .from('users')
             .select('id')
             .ilike('username', username.trim())
             .neq('id', req.params.id)
             .maybeSingle();
+
+        if (checkError) {
+            console.error('❌ Erro ao verificar usuário existente:', checkError);
+            return res.status(500).json({ error: 'Erro ao verificar disponibilidade do usuário' });
+        }
+
         if (existing) {
             return res.status(400).json({ error: 'Nome de usuário já existe' });
         }
 
         const updateData = {
             username: username.trim().toLowerCase(),
-            name: name.trim().toUpperCase(),
+            name: name.trim(),                          // <-- sem .toUpperCase()
             sector: sector || null,
             is_admin: is_admin || false,
             is_active: is_active !== undefined ? is_active : true,
             authorized_ips: authorized_ips || []
         };
 
-        // Só atualiza senha se foi fornecida
         if (password && password.trim() !== '') {
             updateData.password = password;
         }
@@ -339,9 +330,7 @@ app.delete('/api/usuarios/:id', async (req, res) => {
     }
 });
 
-// ============================================
-// ROTAS PRINCIPAIS
-// ============================================
+// Rotas principais
 app.get('/', (req, res) => res.sendFile(path.join(publicPath, 'index.html')));
 app.get('/app', (req, res) => res.sendFile(path.join(publicPath, 'index.html')));
 
@@ -361,12 +350,11 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log('\n🚀 ========================================');
     console.log('✅ Servidor Usuários ONLINE');
     console.log(`✅ Porta: ${PORT}`);
-    console.log(`✅ Database: Conectado ao Supabase`);
+    console.log(`✅ Database: Conectado ao Supabase (service_role)`);
     console.log(`✅ Autenticação: Ativa (Portal)`);
     console.log('🚀 ========================================\n');
 });
 
-// Graceful shutdown
 process.on('SIGTERM', () => {
     console.log('⚠️ SIGTERM recebido, encerrando servidor...');
     server.close(() => process.exit(0));
